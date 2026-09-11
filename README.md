@@ -42,10 +42,10 @@ sudo mv git-purge /usr/local/bin/   # optional: put on your PATH
 **Once published on GitHub:**
 
 ```bash
-go install github.com/jbdanho/git-purge/cmd/git-purge@latest
+go install github.com/cyber-pnl/git-purge/cmd/git-purge@latest
 ```
 
-Or download a pre-compiled binary from the [Releases](https://github.com/jbdanho/git-purge/releases) page.
+Or download a pre-compiled binary from the [Releases](https://github.com/cyber-pnl/git-purge/releases) page.
 
 > If `go install` asks for a GitHub username/password, it means the repo is **private or not yet published** — the module must be public for `@latest` to resolve.
 

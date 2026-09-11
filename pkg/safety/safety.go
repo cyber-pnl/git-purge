@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+"github.com/cyber-pnl/git-purge/pkg/analyzer"
 
-	"github.com/jbdanho/git-purge/pkg/analyzer"
-	giter "github.com/jbdanho/git-purge/pkg/git"
+	giter "github.com/cyber-pnl/git-purge/pkg/git"
 )
 
 // DefaultProtected are branches never deletable by default.

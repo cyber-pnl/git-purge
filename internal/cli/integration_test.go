@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jbdanho/git-purge/pkg/analyzer"
-	giter "github.com/jbdanho/git-purge/pkg/git"
-	"github.com/jbdanho/git-purge/pkg/safety"
+	"github.com/cyber-pnl/git-purge/pkg/analyzer"
+	giter "github.com/cyber-pnl/git-purge/pkg/git"
+	"github.com/cyber-pnl/git-purge/pkg/safety"
 )
 
 func setupRepo(t *testing.T) (client *giter.Client, dir string) {

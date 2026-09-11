@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+"github.com/cyber-pnl/git-purge/pkg/analyzer"
 
-	"github.com/jbdanho/git-purge/pkg/analyzer"
-	giter "github.com/jbdanho/git-purge/pkg/git"
+	giter "github.com/cyber-pnl/git-purge/pkg/git"
 )
 
 func setupRepo(t *testing.T) (client *giter.Client, dir string) {

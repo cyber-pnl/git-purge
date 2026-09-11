@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jbdanho/git-purge/pkg/analyzer"
+	"github.com/cyber-pnl/git-purge/pkg/analyzer"
 )
 
 func newListCmd(base, protect string, keepDays int, verbose bool) *cobra.Command {

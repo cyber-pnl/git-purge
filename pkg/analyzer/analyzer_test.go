@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	giter "github.com/jbdanho/git-purge/pkg/git"
+	giter "github.com/cyber-pnl/git-purge/pkg/git"
 )
 
 func setupRepo(t *testing.T) (client *giter.Client, dir string) {

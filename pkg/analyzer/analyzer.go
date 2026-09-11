@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	giter "github.com/jbdanho/git-purge/pkg/git"
+	giter "github.com/cyber-pnl/git-purge/pkg/git"
 )
 
 // Status represents the classification of a branch.

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jbdanho/git-purge/internal/cli"
+	"github.com/cyber-pnl/git-purge/internal/cli"
 )
 
 func main() {

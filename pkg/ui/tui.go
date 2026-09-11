@@ -6,9 +6,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+"github.com/cyber-pnl/git-purge/pkg/analyzer"
 
-	"github.com/jbdanho/git-purge/pkg/analyzer"
-	"github.com/jbdanho/git-purge/pkg/safety"
+	"github.com/cyber-pnl/git-purge/pkg/safety"
 )
 
 var (

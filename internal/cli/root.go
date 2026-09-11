@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/jbdanho/git-purge/pkg/analyzer"
-	giter "github.com/jbdanho/git-purge/pkg/git"
-	"github.com/jbdanho/git-purge/pkg/safety"
+	"github.com/cyber-pnl/git-purge/pkg/analyzer"
+	giter "github.com/cyber-pnl/git-purge/pkg/git"
+	"github.com/cyber-pnl/git-purge/pkg/safety"
 )
 
 // Version is the build version, overridden at link time.
