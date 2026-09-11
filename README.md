@@ -27,11 +27,27 @@ When PRs are merged on GitHub/GitLab/Bitbucket, remote branches get deleted auto
 
 ## Installation
 
+> [!NOTE]
+> `go install ...@latest` and the Releases page only work once the repository is **published (public) on GitHub**.
+> While the code is still local/unpublished, install directly from your working copy instead.
+
+**From source (works before publishing):**
+
+```bash
+cd /path/to/git-purge
+go build -o git-purge ./cmd/git-purge
+sudo mv git-purge /usr/local/bin/   # optional: put on your PATH
+```
+
+**Once published on GitHub:**
+
 ```bash
 go install github.com/jbdanho/git-purge/cmd/git-purge@latest
 ```
 
 Or download a pre-compiled binary from the [Releases](https://github.com/jbdanho/git-purge/releases) page.
+
+> If `go install` asks for a GitHub username/password, it means the repo is **private or not yet published** — the module must be public for `@latest` to resolve.
 
 ---
 
