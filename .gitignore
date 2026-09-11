@@ -1,0 +1,12 @@
+# Build artifacts
+/git-purge
+/dist/
+*.exe
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Local safety logs
+/.git-purge/
