@@ -27,27 +27,28 @@ When PRs are merged on GitHub/GitLab/Bitbucket, remote branches get deleted auto
 
 ## Installation
 
-> [!NOTE]
-> `go install ...@latest` and the Releases page only work once the repository is **published (public) on GitHub**.
-> While the code is still local/unpublished, install directly from your working copy instead.
-
-**From source (works before publishing):**
+**Option 1 — Install system-wide (available for all users, no PATH setup needed):**
 
 ```bash
-cd /path/to/git-purge
-go build -o git-purge ./cmd/git-purge
-sudo mv git-purge /usr/local/bin/   # optional: put on your PATH
+sudo env GOBIN=/usr/local/bin go install github.com/cyber-pnl/git-purge/cmd/git-purge@latest
 ```
 
-**Once published on GitHub:**
+The binary is placed in `/usr/local/bin`, which is always on the system `PATH`, so `git-purge` is immediately available in any terminal:
+
+```bash
+git-purge version   # => git-purge dev
+```
+
+**Option 2 — Install to your Go bin directory:**
 
 ```bash
 go install github.com/cyber-pnl/git-purge/cmd/git-purge@latest
+
+# make sure $(go env GOPATH)/bin is on your PATH
+export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-Or download a pre-compiled binary from the [Releases](https://github.com/cyber-pnl/git-purge/releases) page.
-
-> If `go install` asks for a GitHub username/password, it means the repo is **private or not yet published** — the module must be public for `@latest` to resolve.
+**Option 3 — Download a pre-compiled binary** from the [Releases](https://github.com/cyber-pnl/git-purge/releases) page and add it to your `PATH`.
 
 ---
 
