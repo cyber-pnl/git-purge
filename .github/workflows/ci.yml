@@ -14,24 +14,51 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
+          cache: true
       - uses: golangci/golangci-lint-action@v6
         with:
           version: latest
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ["1.22", "stable"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
-      - run: go test ./... -race -coverprofile=coverage.out
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      - name: Run unit tests with race detector
+        run: go test ./... -race -coverprofile=coverage.out
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.go-version }}
+          path: coverage.out
 
-  build:
+  test-integration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
-      - run: go build ./...
+          cache: true
+      - name: Run integration tests on real git repos
+        run: go test ./internal/cli -run Integration -count=1 -v
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, test, test-integration]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+      - name: Build all packages
+        run: go build ./...
+      - name: Verify git-purge binary runs
+        run: go run ./cmd/git-purge version
