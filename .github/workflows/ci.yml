@@ -17,7 +17,9 @@ jobs:
           cache: true
       - uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.64.8
+          install-mode: goinstall
+          args: --timeout=3m
 
   test:
     runs-on: ubuntu-latest
