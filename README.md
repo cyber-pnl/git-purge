@@ -138,10 +138,6 @@ pkg/ui            → interactive terminal UI (Bubbletea)
 
 ---
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ## License
 
 [MIT](LICENSE)
