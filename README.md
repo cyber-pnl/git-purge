@@ -75,7 +75,22 @@ git-purge --protect "main,master,release/*,staging"
 
 ## How It Works
 
-**Squash-merge detection** — When a PR is squash-merged, the commit hash on `main` differs from the branch. git-purge compares the branch diff against `main`'s history to safely confirm the merge.
+**Branch classification** — every local branch is classified on a decision chain that never guesses: any doubt means the branch is kept.
+
+```mermaid
+flowchart TD
+    B[branch] --> C{is current branch<br/>or main / master / dev?}
+    C -- yes --> P[PROTECTED<br/>never deleted]
+    C -- no --> G{upstream track<br/>= gone?}
+    G -- yes --> GO[GONE<br/>remote pruned → safe to delete]
+    G -- no --> M{fully merged into base?<br/>merge-base --is-ancestor}
+    M -- yes --> ME[MERGED<br/>safe to delete]
+    M -- no --> S{same tree on base<br/>since merge-base?}
+    S -- yes --> SQ[SQUASH_MERGED<br/>squash-merge detected → safe to delete]
+    S -- no --> A[ACTIVE_UNMERGED<br/>kept, never deleted]
+```
+
+**Squash-merge detection** — When a PR is squash-merged, the commit hash on `main` differs from the branch. git-purge compares the branch **tree** against `main`'s history to safely confirm the merge.
 
 **Protected branches** — `main`, `master`, `dev`, and your current branch are never deleted. Custom patterns supported via `--protect`.
 
@@ -85,14 +100,40 @@ git-purge --protect "main,master,release/*,staging"
 
 ## Architecture
 
+The codebase is layered so that safety decisions are enforced no matter which entry point you use:
+
+```mermaid
+flowchart TD
+    CLI[internal/cli<br/>Cobra commands]
+    CLI -->|list| LST[print classification]
+    CLI -->|purge| RUN[runPurge]
+    CLI -->|version| VER[print version]
+
+    RUN --> DRY{dry-run?}
+    DRY -- yes --> OUT[print candidates<br/>nothing deleted]
+    DRY -- no --> FORCE{--force --yes?}
+    FORCE -- yes --> DEL[deleteAll<br/>loop over candidates]
+    FORCE -- no --> TUI[pkg/ui<br/>Bubbletea selection]
+
+    TUI --> CONF[confirm selection]
+    CONF --> DEL
+
+    LST & RUN & DEL --> SAFETY[pkg/safety<br/>IsProtected / keep-days / CanDelete]
+    SAFETY --> REC[record SHA in .git-purge]
+    REC --> GIT[pkg/git<br/>git branch -d / -D]
+    GIT --> CLASS[pkg/analyzer<br/>branch classification]
+
+    CLASS --> GIT
 ```
-cmd/git-purge   →   pkg/ui (Bubbletea TUI)
-                         ↓
-                    pkg/analyzer (branch classification)
-                         ↓
-                    pkg/git (Git adapter via exec.Command)
-                         ↓
-                    pkg/safety (protections, dry-run, logging)
+
+**Layer responsibilities**
+
+```
+internal/cli      → command handling, flags, orchestration (setup / purge / list)
+pkg/analyzer      → decides WHAT a branch is (merged, squash-merged, gone, ...)
+pkg/safety        → decides IF a branch may be deleted (protections, keep-days, logging)
+pkg/git           → thin adapter over the `git` CLI (exec.Command)
+pkg/ui            → interactive terminal UI (Bubbletea)
 ```
 
 ---
