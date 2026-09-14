@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
-"github.com/cyber-pnl/git-purge/pkg/analyzer"
 
+	"github.com/cyber-pnl/git-purge/pkg/analyzer"
 	giter "github.com/cyber-pnl/git-purge/pkg/git"
 )
 

@@ -6,8 +6,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-"github.com/cyber-pnl/git-purge/pkg/analyzer"
 
+	"github.com/cyber-pnl/git-purge/pkg/analyzer"
 	"github.com/cyber-pnl/git-purge/pkg/safety"
 )
 
