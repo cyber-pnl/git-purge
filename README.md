@@ -2,7 +2,8 @@
 
 > The zero-friction local Git branch cleaner for modern developer workflows.
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=for-the-badge&logo=go)](https://go.dev)
+[![CI](https://github.com/cyber-pnl/git-purge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyber-pnl/git-purge/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 ---
@@ -36,7 +37,7 @@ sudo env GOBIN=/usr/local/bin go install github.com/cyber-pnl/git-purge/cmd/git-
 The binary is placed in `/usr/local/bin`, which is always on the system `PATH`, so `git-purge` is immediately available in any terminal:
 
 ```bash
-git-purge version   # => git-purge dev
+git-purge version   # => git-purge v0.1.1
 ```
 
 **Option 2 — Install to your Go bin directory:**
@@ -135,6 +136,33 @@ pkg/safety        → decides IF a branch may be deleted (protections, keep-days
 pkg/git           → thin adapter over the `git` CLI (exec.Command)
 pkg/ui            → interactive terminal UI (Bubbletea)
 ```
+
+---
+
+## Development
+
+```bash
+go build ./...                     # build the binary
+go test ./...                      # unit tests
+go test ./... -run Integration -v  # integration tests (real temp git repos)
+golangci-lint run                  # lint
+```
+
+CI runs the unit tests on Go 1.25 and the latest stable release, the integration
+suite, the linter, and the security scan below.
+
+---
+
+## Security
+
+- **Runtime safety** — deletions are gated by `pkg/safety`, and every removed
+  branch's SHA is recorded in `.git-purge/` so it can be restored with
+  `git branch <name> <sha>`.
+- **Continuous scanning** — every push and pull request runs
+  [Trivy](https://trivy.dev) over dependencies, secrets and misconfigurations.
+  Findings are uploaded as SARIF to the
+  [Security tab](https://github.com/cyber-pnl/git-purge/security/code-scanning),
+  and CI fails on any fixable `CRITICAL` or `HIGH` issue.
 
 ---
 
