@@ -53,7 +53,7 @@ func newVersionCmd() *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("git-purge", Version)
+			fmt.Println("git-purge", resolvedVersion())
 		},
 	}
 }

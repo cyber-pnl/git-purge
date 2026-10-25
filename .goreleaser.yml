@@ -12,6 +12,9 @@ builds:
     binary: git-purge
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/cyber-pnl/git-purge/internal/cli.Version={{ .Version }}
     goos:
       - linux
       - darwin

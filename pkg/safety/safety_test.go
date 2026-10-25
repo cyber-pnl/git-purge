@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cyber-pnl/git-purge/pkg/analyzer"
 	giter "github.com/cyber-pnl/git-purge/pkg/git"
@@ -77,13 +78,13 @@ func TestRecentlyModified(t *testing.T) {
 	c, _ := setupRepo(t)
 	e := New(c, Options{KeepDays: 14})
 
-	branch := giter.Branch{LastCommitDate: "2026-09-01T10:00:00+02:00"}
+	branch := giter.Branch{LastCommitDate: time.Now().AddDate(0, 0, -1).Format(time.RFC3339)}
 	recent, err := e.RecentlyModified(branch, 14)
 	if err != nil {
 		t.Fatalf("RecentlyModified: %v", err)
 	}
 
-	old := giter.Branch{LastCommitDate: "2024-01-01T10:00:00+02:00"}
+	old := giter.Branch{LastCommitDate: time.Now().AddDate(0, 0, -30).Format(time.RFC3339)}
 	notRecent, err := e.RecentlyModified(old, 14)
 	if err != nil {
 		t.Fatalf("RecentlyModified(old): %v", err)

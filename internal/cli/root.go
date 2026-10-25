@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,8 +13,25 @@ import (
 	"github.com/cyber-pnl/git-purge/pkg/safety"
 )
 
-// Version is the build version, overridden at link time.
+// Version is the build version, overridden at link time with
+// -ldflags "-X github.com/cyber-pnl/git-purge/internal/cli.Version=vX.Y.Z".
 var Version = "dev"
+
+// resolvedVersion returns the version to display. When Version was not set at
+// build time, it falls back to the module version recorded in the build info.
+// Binaries installed with `go install ...@vX.Y.Z` therefore report the tag
+// instead of "dev".
+func resolvedVersion() string {
+	if Version != "" && Version != "dev" {
+		return Version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return Version
+}
 
 // Execute runs the root command and exits on error.
 func Execute() {
