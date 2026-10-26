@@ -14,7 +14,7 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X github.com/cyber-pnl/git-purge/internal/cli.Version={{ .Version }}
+      - -X github.com/cyber-pnl/git-purge/internal/cli.Version=v{{ .Version }}
     goos:
       - linux
       - darwin
@@ -24,11 +24,11 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 checksum:
   name_template: "checksums.txt"
