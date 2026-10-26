@@ -10,3 +10,18 @@ coverage.*
 
 # Local safety logs
 /.git-purge/
+
+# AI agent / assistant files (kept local only)
+/AGENTS.md
+/PLAN.md
+/RESUME.md
+/rules/
+/skills/
+/.opencode/
+/.claude/
+/.cursor/
+/.windsurf/
+/.aider*
+CLAUDE.md
+GEMINI.md
+.github/copilot-instructions.md
