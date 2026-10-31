@@ -44,13 +44,14 @@ func Execute() {
 
 func newRootCmd() *cobra.Command {
 	var (
-		dryRun   bool
-		force    bool
-		yes      bool
-		keepDays int
-		protect  string
-		verbose  bool
-		base     string
+		dryRun       bool
+		force        bool
+		yes          bool
+		keepDays     int
+		protect      string
+		verbose      bool
+		base         string
+		deleteRemote bool
 	)
 
 	root := &cobra.Command{
@@ -63,13 +64,14 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runPurge(runOptions{
-				dryRun:   dryRun,
-				force:    force,
-				yes:      yes,
-				keepDays: keepDays,
-				protect:  protect,
-				verbose:  verbose,
-				base:     base,
+				dryRun:       dryRun,
+				force:        force,
+				yes:          yes,
+				keepDays:     keepDays,
+				protect:      protect,
+				verbose:      verbose,
+				base:         base,
+				deleteRemote: deleteRemote,
 			})
 		},
 	}
@@ -79,6 +81,7 @@ func newRootCmd() *cobra.Command {
 	root.PersistentFlags().StringVar(&protect, "protect", "", "comma-separated protected branch patterns")
 	root.PersistentFlags().BoolVar(&verbose, "verbose", false, "verbose output")
 	root.PersistentFlags().StringVar(&base, "base", "", "base branch for merge detection (default: current main/master)")
+	root.PersistentFlags().BoolVar(&deleteRemote, "delete-remote", false, "also delete the remote branch when it exists (merged branches only)")
 	root.PersistentFlags().BoolVar(&force, "force", false, "skip confirmation (non-interactive)")
 	root.PersistentFlags().BoolVar(&yes, "yes", false, "auto-confirm all prompts")
 
@@ -88,13 +91,14 @@ func newRootCmd() *cobra.Command {
 }
 
 type runOptions struct {
-	dryRun   bool
-	force    bool
-	yes      bool
-	keepDays int
-	protect  string
-	verbose  bool
-	base     string
+	dryRun       bool
+	force        bool
+	yes          bool
+	keepDays     int
+	protect      string
+	verbose      bool
+	base         string
+	deleteRemote bool
 }
 
 // setup returns a configured git client, analyzer, and safety engine.
@@ -138,6 +142,7 @@ func setup(opts runOptions, inputDir string) (*giter.Client, *analyzer.Analyzer,
 		KeepDays:       opts.keepDays,
 		CustomPatterns: parsePatterns(opts.protect),
 		BaseBranch:     base,
+		DeleteRemote:   opts.deleteRemote,
 	})
 	an := analyzer.New(g, base)
 	return g, an, engine, nil

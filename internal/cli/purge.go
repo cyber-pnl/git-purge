@@ -32,7 +32,7 @@ func runPurge(opts runOptions) error {
 	}
 
 	if opts.dryRun {
-		printDryRun(analysis)
+		printDryRun(analysis, opts.deleteRemote)
 		return nil
 	}
 	if opts.yes && opts.force {
@@ -41,26 +41,38 @@ func runPurge(opts runOptions) error {
 	return runInteractive(engine, analysis)
 }
 
-func printDryRun(analysis safety.Analysis) {
+func printDryRun(analysis safety.Analysis, deleteRemote bool) {
 	fmt.Println("Dry run — nothing will be deleted. Candidates:")
 	for _, c := range analysis.Candidates {
 		fmt.Printf("  %-20s %s\n", c.Status.String(), c.Name)
+	}
+	if deleteRemote {
+		fmt.Println("\nMatching remote branches will also be deleted where they exist.")
 	}
 	fmt.Printf("\n%d branch(es) would be deleted.\n", len(analysis.Candidates))
 }
 
 func deleteAll(engine *safety.Engine, analysis safety.Analysis) error {
-	kept := 0
+	failed := 0
 	for _, c := range analysis.Candidates {
-		if err := engine.DeleteSafe(c.Branch, 0, true); err != nil {
+		res, err := engine.DeleteSafe(&c, 0, true)
+		if err != nil {
 			fmt.Printf("skip %-20s %v\n", c.Name, err)
-			kept++
+			failed++
 			continue
 		}
-		fmt.Printf("deleted %s\n", c.Name)
+		switch {
+		case res.RemoteDeleted:
+			fmt.Printf("deleted %s (local + remote)\n", c.Name)
+		default:
+			fmt.Printf("deleted %s\n", c.Name)
+		}
+		if res.RemoteSkipped != "" {
+			fmt.Printf("  remote not deleted: %s\n", res.RemoteSkipped)
+		}
 	}
-	if kept > 0 {
-		return fmt.Errorf("%d branch(es) could not be deleted", kept)
+	if failed > 0 {
+		return fmt.Errorf("%d branch(es) could not be deleted", failed)
 	}
 	return nil
 }

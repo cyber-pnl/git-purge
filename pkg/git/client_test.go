@@ -164,6 +164,46 @@ func TestDeleteBranchForce(t *testing.T) {
 	}
 }
 
+func TestRemoteBranchSHAAndDelete(t *testing.T) {
+	c := setupTestRepo(t)
+	commitFile(t, c.dir, "a.txt", "initial")
+	base := getDefaultBranch(t, c)
+
+	remoteDir := t.TempDir()
+	if out, err := exec.Command("git", "init", "--bare", remoteDir).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare: %s: %v", string(out), err)
+	}
+	runGit(c.dir, "remote", "add", "origin", remoteDir)
+
+	runGit(c.dir, "checkout", "-b", "feature/remote")
+	commitFile(t, c.dir, "b.txt", "remote work")
+	runGit(c.dir, "push", "origin", "feature/remote")
+	runGit(c.dir, "checkout", base)
+
+	localSHA, err := c.FullSHA("feature/remote")
+	if err != nil {
+		t.Fatalf("FullSHA: %v", err)
+	}
+	remoteSHA, err := c.RemoteBranchSHA("origin", "feature/remote")
+	if err != nil {
+		t.Fatalf("RemoteBranchSHA: %v", err)
+	}
+	if remoteSHA != localSHA {
+		t.Errorf("remote SHA %q != local SHA %q", remoteSHA, localSHA)
+	}
+
+	if err := c.DeleteRemoteBranch("origin", "feature/remote"); err != nil {
+		t.Fatalf("DeleteRemoteBranch: %v", err)
+	}
+	remoteSHA, err = c.RemoteBranchSHA("origin", "feature/remote")
+	if err != nil {
+		t.Fatalf("RemoteBranchSHA after delete: %v", err)
+	}
+	if remoteSHA != "" {
+		t.Errorf("expected remote branch to be deleted, got SHA %q", remoteSHA)
+	}
+}
+
 func TestIsInsideWorkTree(t *testing.T) {
 	c := setupTestRepo(t)
 	inside, err := c.IsInsideWorkTree()

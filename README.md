@@ -20,6 +20,7 @@ When PRs are merged on GitHub/GitLab/Bitbucket, remote branches get deleted auto
 
 - **Smart Squash-Merge Detection** — identifies branches merged via squash even when `git branch --merged` fails
 - **Gone Branch Cleanup** — detects branches whose remote was pruned
+- **Optional Remote Cleanup** — also delete the matching remote branch, only once it is merged
 - **Interactive TUI** — keyboard-driven terminal UI built with Bubbletea
 - **Fail-Safe & Non-Destructive** — protected branches, SHA logging, `--dry-run` support
 - **Blazing Fast** — pure Go, scans large repos in milliseconds
@@ -70,6 +71,9 @@ git-purge --keep-days 14
 
 # Protect custom branches
 git-purge --protect "main,master,release/*,staging"
+
+# Also delete the matching remote branch (merged branches only)
+git-purge --delete-remote
 ```
 
 ---
@@ -94,6 +98,8 @@ flowchart TD
 **Squash-merge detection** — When a PR is squash-merged, the commit hash on `main` differs from the branch. git-purge compares the branch **tree** against `main`'s history to safely confirm the merge.
 
 **Protected branches** — `main`, `master`, `dev`, and your current branch are never deleted. Custom patterns supported via `--protect`.
+
+**Remote cleanup** — `--delete-remote` also removes the remote branch, but only when the local branch is `MERGED` or `SQUASH_MERGED` **and** the remote tip is exactly the same commit as the local tip. If the remote has extra commits, it is left untouched.
 
 **Recovery log** — Every deletion records the branch SHA in `.git-purge/` for easy recovery via `git reflog` or `git branch <name> <sha>`.
 

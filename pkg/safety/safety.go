@@ -23,8 +23,11 @@ type Options struct {
 	CustomPatterns []string
 	// BaseBranch is the reference branch for classification.
 	BaseBranch string
-	// Force skips the protection check for non-protected branches (unused; kept explicit).
-	Force bool
+	// DeleteRemote also deletes the remote branch when it exists and matches
+	// the merged local branch.
+	DeleteRemote bool
+	// Remote is the default remote used when a branch has no upstream.
+	Remote string
 }
 
 // Engine enforces safety rules before any deletion.
@@ -145,20 +148,106 @@ func (e *Engine) CurrentLog(branch string) string {
 	return string(data)
 }
 
+// DeleteResult describes what DeleteSafe actually removed.
+type DeleteResult struct {
+	LocalDeleted  bool
+	RemoteDeleted bool
+	// RemoteSkipped explains why the remote branch was not deleted, if any.
+	RemoteSkipped string
+}
+
 // DeleteSafe records the SHA then deletes the branch.
-// It refuses (without side effects) if the branch is protected or current.
-func (e *Engine) DeleteSafe(branch giter.Branch, keepDays int, force bool) error {
-	reason, err := e.CanDelete(branch, keepDays)
+// It refuses (without side effects) if the branch is protected, current, or
+// not classified as safe to delete. When DeleteRemote is enabled, it also
+// deletes the remote branch if it exists and points at the same commit.
+func (e *Engine) DeleteSafe(branch *analyzer.BranchResult, keepDays int, force bool) (DeleteResult, error) {
+	var res DeleteResult
+
+	reason, err := e.CanDelete(branch.Branch, keepDays)
 	if err != nil {
-		return err
+		return res, err
 	}
 	if reason != "" {
-		return fmt.Errorf("refusing to delete: %s", reason)
+		return res, fmt.Errorf("refusing to delete: %s", reason)
 	}
-	if err := e.recordLog(branch.Name, branch.Hash, "deleted"); err != nil {
-		return fmt.Errorf("record log before delete: %w", err)
+	switch branch.Status {
+	case analyzer.StatusMerged, analyzer.StatusSquashMerged, analyzer.StatusGone:
+	default:
+		return res, fmt.Errorf("refusing to delete: branch is not safe to delete (%s)", branch.Status)
 	}
-	return e.git.DeleteBranch(branch.Name, force)
+
+	localSHA, err := e.git.FullSHA(branch.Name)
+	if err != nil {
+		return res, fmt.Errorf("resolve %s: %w", branch.Name, err)
+	}
+
+	remote, remoteBranch, remoteSHA, skipped := e.remoteToDelete(branch, localSHA)
+	res.RemoteSkipped = skipped
+
+	if err := e.recordLog(branch.Name, localSHA, "deleted"); err != nil {
+		return res, fmt.Errorf("record log before delete: %w", err)
+	}
+	if err := e.git.DeleteBranch(branch.Name, force); err != nil {
+		return res, err
+	}
+	res.LocalDeleted = true
+
+	if remoteSHA == "" {
+		return res, nil
+	}
+
+	if err := e.recordLog(remote+"/"+remoteBranch, remoteSHA, "remote-deleted"); err != nil {
+		res.RemoteSkipped = fmt.Sprintf("record remote log: %v", err)
+		return res, nil
+	}
+	if err := e.git.DeleteRemoteBranch(remote, remoteBranch); err != nil {
+		res.RemoteSkipped = err.Error()
+		return res, nil
+	}
+	res.RemoteDeleted = true
+	return res, nil
+}
+
+// remoteToDelete decides whether the remote counterpart of a branch can be
+// deleted. It returns an empty SHA when nothing should be deleted.
+func (e *Engine) remoteToDelete(branch *analyzer.BranchResult, localSHA string) (remote, name, sha, skipped string) {
+	if !e.opts.DeleteRemote {
+		return "", "", "", ""
+	}
+	switch branch.Status {
+	case analyzer.StatusMerged, analyzer.StatusSquashMerged:
+		// Eligible: continue below.
+	case analyzer.StatusGone:
+		// The remote branch is already gone.
+		return "", "", "", ""
+	default:
+		return "", "", "", "branch is not merged"
+	}
+
+	remote, name = e.remoteFor(branch.Branch)
+	remoteSHA, err := e.git.RemoteBranchSHA(remote, name)
+	if err != nil {
+		return remote, name, "", fmt.Sprintf("cannot inspect %s/%s: %v", remote, name, err)
+	}
+	if remoteSHA == "" {
+		return remote, name, "", fmt.Sprintf("%s/%s does not exist", remote, name)
+	}
+	if remoteSHA != localSHA {
+		return remote, name, "", fmt.Sprintf("%s/%s differs from the local branch", remote, name)
+	}
+	return remote, name, remoteSHA, ""
+}
+
+// remoteFor resolves the remote and branch name for a local branch.
+func (e *Engine) remoteFor(branch giter.Branch) (remote, name string) {
+	if i := strings.Index(branch.Upstream, "/"); i > 0 {
+		return branch.Upstream[:i], branch.Upstream[i+1:]
+	}
+	remote = e.opts.Remote
+	if remote == "" {
+		remote = "origin"
+	}
+	return remote, branch.Name
 }
 
 // Analysis wraps the analyzer to also apply safety filtering.

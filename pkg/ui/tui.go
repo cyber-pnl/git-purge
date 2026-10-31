@@ -38,15 +38,16 @@ func statusColor(s analyzer.Status) lipgloss.Style {
 
 // Model is the interactive branch selection UI.
 type Model struct {
-	candidates []analyzer.BranchResult
-	cursor     int
-	selected   map[int]bool
-	engine     *safety.Engine
-	done       bool
-	deleted    int
-	kept       int
-	quitting   bool
-	confirming bool
+	candidates    []analyzer.BranchResult
+	cursor        int
+	selected      map[int]bool
+	engine        *safety.Engine
+	done          bool
+	deleted       int
+	remoteDeleted int
+	kept          int
+	quitting      bool
+	confirming    bool
 }
 
 // New creates the TUI model.
@@ -153,8 +154,12 @@ func (m *Model) deleteSelected() (tea.Model, tea.Cmd) {
 		if !m.selected[i] {
 			continue
 		}
-		if err := m.engine.DeleteSafe(c.Branch, 0, true); err != nil {
+		res, err := m.engine.DeleteSafe(&c, 0, true)
+		if err != nil {
 			return m, func() tea.Msg { return deletionResult{name: c.Name, error: err} }
+		}
+		if res.RemoteDeleted {
+			m.remoteDeleted++
 		}
 	}
 	return m, func() tea.Msg { return deletionResult{} }
@@ -166,6 +171,9 @@ func (m *Model) View() string {
 		if m.deleted > 0 || m.kept > 0 {
 			var b strings.Builder
 			b.WriteString(successStyle.Render(fmt.Sprintf("\n%d branch(es) deleted.\n", m.deleted)))
+			if m.remoteDeleted > 0 {
+				b.WriteString(fmt.Sprintf("%d remote branch(es) deleted.\n", m.remoteDeleted))
+			}
 			if m.kept > 0 {
 				b.WriteString(fmt.Sprintf("%d branch(es) could not be deleted.\n", m.kept))
 			}

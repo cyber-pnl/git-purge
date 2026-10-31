@@ -147,8 +147,12 @@ func TestIntegration_FullPipeline(t *testing.T) {
 	// Use force=true because squash-merged branches aren't "fully merged" in
 	// git's own sense — our analyzer already confirmed safety.
 	for _, cand := range analysis.Candidates {
-		if err := e.DeleteSafe(cand.Branch, 0, true); err != nil {
+		res, err := e.DeleteSafe(&cand, 0, true)
+		if err != nil {
 			t.Fatalf("DeleteSafe(%s): %v", cand.Name, err)
+		}
+		if !res.LocalDeleted {
+			t.Errorf("DeleteSafe(%s): expected local deletion", cand.Name)
 		}
 	}
 

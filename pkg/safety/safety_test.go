@@ -185,9 +185,13 @@ func TestDeleteSafe(t *testing.T) {
 		t.Fatal("merged branch not found")
 	}
 
-	err := e.DeleteSafe(target, 0, false)
+	targetResult := analyzer.BranchResult{Branch: target, Status: analyzer.StatusMerged}
+	res, err := e.DeleteSafe(&targetResult, 0, false)
 	if err != nil {
 		t.Fatalf("DeleteSafe: %v", err)
+	}
+	if !res.LocalDeleted {
+		t.Error("expected local branch to be deleted")
 	}
 
 	// Branch should be gone.
@@ -208,14 +212,150 @@ func TestDeleteSafe_ProtectedRefused(t *testing.T) {
 	commit(t, dir, "a.txt", "base")
 
 	e := New(c, Options{})
-	mainBranch := giter.Branch{Name: "main", Hash: "abc"}
-	err := e.DeleteSafe(mainBranch, 0, false)
+	mainBranch := analyzer.BranchResult{
+		Branch: giter.Branch{Name: "main", Hash: "abc"},
+		Status: analyzer.StatusProtected,
+	}
+	_, err := e.DeleteSafe(&mainBranch, 0, false)
 	if err == nil {
 		t.Fatal("expected error for protected branch, got nil")
 	}
 	if !strings.Contains(err.Error(), "protected") {
 		t.Errorf("expected protection error, got %v", err)
 	}
+}
+
+func initBareRemote(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "init", "--bare", dir).CombinedOutput(); err != nil {
+		t.Fatalf("git init --bare: %s: %v", string(out), err)
+	}
+	return dir
+}
+
+func findCandidate(t *testing.T, analysis Analysis, name string) analyzer.BranchResult {
+	t.Helper()
+	for _, r := range analysis.Candidates {
+		if r.Name == name {
+			return r
+		}
+	}
+	t.Fatalf("%s should be a candidate", name)
+	return analyzer.BranchResult{}
+}
+
+func TestDeleteSafe_Remote(t *testing.T) {
+	c, dir := setupRepo(t)
+	commit(t, dir, "a.txt", "base")
+	base := defaultBase(t, c)
+
+	run(dir, "remote", "add", "origin", initBareRemote(t))
+	run(dir, "checkout", "-b", "feature/merged")
+	commit(t, dir, "b.txt", "work")
+	run(dir, "push", "-u", "origin", "feature/merged")
+	run(dir, "checkout", base)
+	run(dir, "merge", "feature/merged", "--no-ff", "-m", "merge")
+
+	e := New(c, Options{DeleteRemote: true})
+	e.SetLogDir(filepath.Join(dir, ".git-purge"))
+	analysis, err := e.Analyze(analyzer.New(c, base))
+	if err != nil {
+		t.Fatalf("Analyze: %v", err)
+	}
+	cand := findCandidate(t, analysis, "feature/merged")
+
+	res, err := e.DeleteSafe(&cand, 0, false)
+	if err != nil {
+		t.Fatalf("DeleteSafe: %v", err)
+	}
+	if !res.LocalDeleted {
+		t.Error("expected local branch to be deleted")
+	}
+	if !res.RemoteDeleted {
+		t.Errorf("expected remote branch to be deleted, skipped: %q", res.RemoteSkipped)
+	}
+
+	sha, err := c.RemoteBranchSHA("origin", "feature/merged")
+	if err != nil {
+		t.Fatalf("RemoteBranchSHA: %v", err)
+	}
+	if sha != "" {
+		t.Errorf("remote branch should be gone, got %q", sha)
+	}
+}
+
+func TestDeleteSafe_RemoteAbsent(t *testing.T) {
+	c, dir := setupRepo(t)
+	commit(t, dir, "a.txt", "base")
+	base := defaultBase(t, c)
+
+	run(dir, "remote", "add", "origin", initBareRemote(t))
+	run(dir, "checkout", "-b", "feature/merged")
+	commit(t, dir, "b.txt", "work")
+	run(dir, "checkout", base)
+	run(dir, "merge", "feature/merged", "--no-ff", "-m", "merge")
+
+	e := New(c, Options{DeleteRemote: true})
+	e.SetLogDir(filepath.Join(dir, ".git-purge"))
+	analysis, err := e.Analyze(analyzer.New(c, base))
+	if err != nil {
+		t.Fatalf("Analyze: %v", err)
+	}
+	cand := findCandidate(t, analysis, "feature/merged")
+
+	res, err := e.DeleteSafe(&cand, 0, false)
+	if err != nil {
+		t.Fatalf("DeleteSafe: %v", err)
+	}
+	if !res.LocalDeleted {
+		t.Error("expected local branch to be deleted")
+	}
+	if res.RemoteDeleted {
+		t.Error("remote branch did not exist and should not be reported as deleted")
+	}
+	if !strings.Contains(res.RemoteSkipped, "does not exist") {
+		t.Errorf("expected 'does not exist' skip reason, got %q", res.RemoteSkipped)
+	}
+}
+
+func TestDeleteSafe_RefusesUnmerged(t *testing.T) {
+	c, dir := setupRepo(t)
+	commit(t, dir, "a.txt", "base")
+	base := defaultBase(t, c)
+
+	run(dir, "checkout", "-b", "feature/active")
+	commit(t, dir, "b.txt", "active work")
+	run(dir, "checkout", base)
+
+	branches, _ := c.ListLocalBranches()
+	var target giter.Branch
+	for _, b := range branches {
+		if b.Name == "feature/active" {
+			target = b
+		}
+	}
+	if target.Name == "" {
+		t.Fatal("active branch not found")
+	}
+
+	e := New(c, Options{DeleteRemote: true})
+	e.SetLogDir(filepath.Join(dir, ".git-purge"))
+	_, err := e.DeleteSafe(&analyzer.BranchResult{Branch: target, Status: analyzer.StatusActiveUnmerged}, 0, true)
+	if err == nil {
+		t.Fatal("expected refusal for unmerged branch")
+	}
+	if !strings.Contains(err.Error(), "not safe") {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	branches, _ = c.ListLocalBranches()
+	for _, b := range branches {
+		if b.Name == "feature/active" {
+			return
+		}
+	}
+	t.Error("unmerged branch must not be deleted")
 }
 
 func TestAnalyze(t *testing.T) {

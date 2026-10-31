@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -34,8 +35,15 @@ func (c *Client) Dir() string {
 }
 
 func (c *Client) run(args ...string) (string, error) {
+	return c.runWithEnv(nil, args...)
+}
+
+func (c *Client) runWithEnv(extraEnv []string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = c.dir
+	if len(extraEnv) > 0 {
+		cmd.Env = append(os.Environ(), extraEnv...)
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -148,6 +156,42 @@ func (c *Client) DeleteBranch(name string, force bool) error {
 	_, err := c.run("branch", flag, name)
 	if err != nil {
 		return fmt.Errorf("delete branch %s: %w", name, err)
+	}
+	return nil
+}
+
+// FullSHA returns the full SHA for a ref.
+func (c *Client) FullSHA(ref string) (string, error) {
+	out, err := c.run("rev-parse", "--verify", ref)
+	if err != nil {
+		return "", fmt.Errorf("rev-parse %s: %w", ref, err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// RemoteBranchSHA returns the SHA of a branch on the remote, or "" if it does
+// not exist. It queries the remote directly so the result is not affected by
+// stale remote-tracking refs.
+func (c *Client) RemoteBranchSHA(remote, branch string) (string, error) {
+	ref := "refs/heads/" + branch
+	out, err := c.runWithEnv([]string{"GIT_TERMINAL_PROMPT=0"}, "ls-remote", "--heads", remote, ref)
+	if err != nil {
+		return "", fmt.Errorf("ls-remote %s %s: %w", remote, ref, err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[1] == ref {
+			return fields[0], nil
+		}
+	}
+	return "", nil
+}
+
+// DeleteRemoteBranch deletes a branch on the remote.
+func (c *Client) DeleteRemoteBranch(remote, branch string) error {
+	_, err := c.runWithEnv([]string{"GIT_TERMINAL_PROMPT=0"}, "push", remote, "--delete", branch)
+	if err != nil {
+		return fmt.Errorf("delete remote branch %s/%s: %w", remote, branch, err)
 	}
 	return nil
 }
