@@ -101,7 +101,7 @@ flowchart TD
 
 **Remote cleanup** — `--delete-remote` also removes the remote branch, but only when the local branch is `MERGED` or `SQUASH_MERGED` **and** the remote tip is exactly the same commit as the local tip. If the remote has extra commits, it is left untouched.
 
-**Recovery log** — Every deletion records the branch SHA in `.git-purge/` for easy recovery via `git reflog` or `git branch <name> <sha>`.
+**Recovery log** — Every deletion records the branch SHA in `.git-purge/` for easy recovery via `git reflog` or `git branch <name> <sha>`. The log directory is added to the project's `.gitignore` automatically.
 
 ---
 

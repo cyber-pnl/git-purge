@@ -1,6 +1,7 @@
 package safety
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -121,6 +122,9 @@ type LogRecording struct {
 
 // recordLog writes the branch SHA to the local log before deletion.
 func (e *Engine) recordLog(branch, sha, mode string) error {
+	if err := e.ensureLogDirIgnored(); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(e.logDir, 0o755); err != nil {
 		return fmt.Errorf("create log dir: %w", err)
 	}
@@ -133,6 +137,51 @@ func (e *Engine) recordLog(branch, sha, mode string) error {
 	defer f.Close()
 	if _, err := f.WriteString(entry); err != nil {
 		return fmt.Errorf("write log: %w", err)
+	}
+	return nil
+}
+
+// ensureLogDirIgnored adds the log directory to the repository's .gitignore so
+// that purging does not leave an untracked .git-purge/ directory behind.
+func (e *Engine) ensureLogDirIgnored() error {
+	root, err := e.git.TopLevel()
+	if err != nil {
+		return err
+	}
+	logDir, err := filepath.Abs(e.logDir)
+	if err != nil {
+		return fmt.Errorf("resolve log dir: %w", err)
+	}
+	rel, err := filepath.Rel(root, logDir)
+	if err != nil {
+		return fmt.Errorf("resolve log dir relative to repository: %w", err)
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil
+	}
+	entry := filepath.ToSlash(rel) + "/"
+
+	ignorePath := filepath.Join(root, ".gitignore")
+	data, err := os.ReadFile(ignorePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("read .gitignore: %w", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == entry || line == strings.TrimSuffix(entry, "/") {
+			return nil
+		}
+	}
+
+	var b strings.Builder
+	b.Write(data)
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		b.WriteByte('\n')
+	}
+	b.WriteString(entry)
+	b.WriteByte('\n')
+	if err := os.WriteFile(ignorePath, []byte(b.String()), 0o644); err != nil {
+		return fmt.Errorf("update .gitignore: %w", err)
 	}
 	return nil
 }

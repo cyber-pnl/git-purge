@@ -215,6 +215,15 @@ func (c *Client) IsInsideWorkTree() (bool, error) {
 	return true, nil
 }
 
+// TopLevel returns the absolute path of the working tree root.
+func (c *Client) TopLevel() (string, error) {
+	out, err := c.run("rev-parse", "--show-toplevel")
+	if err != nil {
+		return "", fmt.Errorf("rev-parse --show-toplevel: %w", err)
+	}
+	return strings.TrimSpace(out), nil
+}
+
 // IsWorkTreeClean returns true if the working tree has no uncommitted changes.
 func (c *Client) IsWorkTreeClean() (bool, error) {
 	out, err := c.run("status", "--porcelain")

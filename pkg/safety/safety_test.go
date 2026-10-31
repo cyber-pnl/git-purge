@@ -159,6 +159,73 @@ func TestDryRunLogs(t *testing.T) {
 	}
 }
 
+func TestRecordLogAddsGitignoreEntry(t *testing.T) {
+	c, dir := setupRepo(t)
+	ignorePath := filepath.Join(dir, ".gitignore")
+	if err := os.WriteFile(ignorePath, []byte("bin/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := New(c, Options{})
+	e.SetLogDir(filepath.Join(dir, ".git-purge"))
+	for _, name := range []string{"feature/foo", "feature/bar"} {
+		if err := e.DryRun(giter.Branch{Name: name, Hash: "abc123"}); err != nil {
+			t.Fatalf("DryRun(%s): %v", name, err)
+		}
+	}
+
+	data, err := os.ReadFile(ignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.HasPrefix(content, "bin/\n") {
+		t.Errorf("existing .gitignore content lost: %q", content)
+	}
+	if got := strings.Count(content, ".git-purge/"); got != 1 {
+		t.Errorf("expected .git-purge/ exactly once, got %d in %q", got, content)
+	}
+}
+
+func TestRecordLogCreatesGitignore(t *testing.T) {
+	c, dir := setupRepo(t)
+	e := New(c, Options{})
+	e.SetLogDir(filepath.Join(dir, ".git-purge"))
+
+	if err := e.DryRun(giter.Branch{Name: "feature/foo", Hash: "abc123"}); err != nil {
+		t.Fatalf("DryRun: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, ".gitignore"))
+	if err != nil {
+		t.Fatalf("read .gitignore: %v", err)
+	}
+	if !strings.Contains(string(data), ".git-purge/") {
+		t.Errorf("expected .git-purge/ in .gitignore, got %q", string(data))
+	}
+}
+
+func TestRecordLogSkipsExistingGitignoreEntry(t *testing.T) {
+	c, dir := setupRepo(t)
+	ignorePath := filepath.Join(dir, ".gitignore")
+	if err := os.WriteFile(ignorePath, []byte(".git-purge\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := New(c, Options{})
+	e.SetLogDir(filepath.Join(dir, ".git-purge"))
+	if err := e.DryRun(giter.Branch{Name: "feature/foo", Hash: "abc123"}); err != nil {
+		t.Fatalf("DryRun: %v", err)
+	}
+
+	data, err := os.ReadFile(ignorePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != ".git-purge\n" {
+		t.Errorf("existing entry should be kept unchanged, got %q", string(data))
+	}
+}
+
 func TestDeleteSafe(t *testing.T) {
 	c, dir := setupRepo(t)
 	commit(t, dir, "a.txt", "base")
