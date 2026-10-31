@@ -3,6 +3,7 @@
 > The zero-friction local Git branch cleaner for modern developer workflows.
 
 [![CI](https://github.com/cyber-pnl/git-purge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cyber-pnl/git-purge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/cyber-pnl/git-purge?style=for-the-badge)](https://github.com/cyber-pnl/git-purge/releases/latest)
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
@@ -21,6 +22,7 @@ When PRs are merged on GitHub/GitLab/Bitbucket, remote branches get deleted auto
 - **Smart Squash-Merge Detection** — identifies branches merged via squash even when `git branch --merged` fails
 - **Gone Branch Cleanup** — detects branches whose remote was pruned
 - **Optional Remote Cleanup** — also delete the matching remote branch, only once it is merged
+- **Automatic `.gitignore` Hygiene** — the `.git-purge/` log directory is ignored in your project automatically
 - **Interactive TUI** — keyboard-driven terminal UI built with Bubbletea
 - **Fail-Safe & Non-Destructive** — protected branches, SHA logging, `--dry-run` support
 - **Blazing Fast** — pure Go, scans large repos in milliseconds
@@ -38,7 +40,7 @@ sudo env GOBIN=/usr/local/bin go install github.com/cyber-pnl/git-purge/cmd/git-
 The binary is placed in `/usr/local/bin`, which is always on the system `PATH`, so `git-purge` is immediately available in any terminal:
 
 ```bash
-git-purge version   # => git-purge v0.1.1
+git-purge version   # => git-purge v0.2.0
 ```
 
 **Option 2 — Install to your Go bin directory:**
@@ -126,8 +128,8 @@ flowchart TD
     CONF --> DEL
 
     LST & RUN & DEL --> SAFETY[pkg/safety<br/>IsProtected / keep-days / CanDelete]
-    SAFETY --> REC[record SHA in .git-purge]
-    REC --> GIT[pkg/git<br/>git branch -d / -D]
+    SAFETY --> REC[record SHA in .git-purge<br/>+ ignore it in .gitignore]
+    REC --> GIT[pkg/git<br/>git branch -d / -D<br/>git push --delete]
     GIT --> CLASS[pkg/analyzer<br/>branch classification]
 
     CLASS --> GIT
